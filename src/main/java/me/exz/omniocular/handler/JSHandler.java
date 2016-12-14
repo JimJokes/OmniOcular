@@ -21,25 +21,29 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static me.exz.omniocular.util.NBTHelper.NBTCache;
+
 @SuppressWarnings({"CanBeFinal", "UnusedDeclaration"})
 public class JSHandler {
-    public static ScriptEngine engine;
-    public static HashSet<String> scriptSet = new HashSet<String>();
-    private static List<String> lastTips = new ArrayList<String>();
+    static ScriptEngine engine;
+    static HashSet<String> scriptSet = new HashSet<>();
+    private static List<String> lastTips = new ArrayList<>();
     private static int lastHash;
-    private static Map<String, String> fluidList = new HashMap<String, String>();
-    private static Map<String, String> displayNameList = new HashMap<String, String>();
+    private static Map<String, String> fluidList = new HashMap<>();
+    private static Map<String, String> displayNameList = new HashMap<>();
     private static EntityPlayer entityPlayer;
 
-    public static List<String> getBody(Map<Pattern, Node> patternMap, NBTTagCompound n, String id, EntityPlayer player) {
+    static List<String> getBody(Map<Pattern, Node> patternMap, NBTTagCompound n, String id, EntityPlayer player) {
         entityPlayer = player;
         if (n.hashCode() != lastHash || player.worldObj.getTotalWorldTime() % 10 == 0) {
             lastHash = n.hashCode();
             lastTips.clear();
             //LogHelper.info(NBTHelper.NBT2json(n));
             try {
-                String json = "var nbt=" + NBTHelper.NBT2json(n) + ";";
+                String bareJson = NBTHelper.NBT2json(n);
+                String json = "var nbt=" + bareJson + ";";
                 JSHandler.engine.eval(json);
+                WebSocketHandler.broadcast(bareJson);
             } catch (ScriptException e) {
                 e.printStackTrace();
             }
@@ -104,11 +108,11 @@ public class JSHandler {
     }
 
     //todo provide an function to detect player keyboard action. (hold shift, etc.)
-    public static void initEngine() {
+    static void initEngine() {
         ScriptEngineManager manager = new ScriptEngineManager(null);
         engine = manager.getEngineByName("javascript");
         setSpecialChar();
-        /** java 8 work around */
+        /* java 8 work around */
         try {
             engine.eval("load(\"nashorn:mozilla_compat.js\");");
         } catch (ScriptException e) {
@@ -168,9 +172,9 @@ public class JSHandler {
     public static String translate(String t) {
         return StatCollector.translateToLocal(t);
     }
-    
+
     public static String translateFormatted(String t, Object[] format) {
-    	return StatCollector.translateToLocalFormatted(t, format);
+        return StatCollector.translateToLocalFormatted(t, format);
     }
 
     public static String playerHolding() {
@@ -203,7 +207,7 @@ public class JSHandler {
 
     public static String getDisplayName(String hashCode) {
         try {
-            NBTTagCompound nc = NBTHelper.mapNBT.get(Integer.valueOf(hashCode));
+            NBTTagCompound nc = NBTCache.get(Integer.valueOf(hashCode));
             ItemStack is = ItemStack.loadItemStackFromNBT(nc);
             return is.getDisplayName();
         } catch (Exception e) {
